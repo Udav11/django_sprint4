@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 MAX_LENGTH = 256
-MAX_LENGTH = 15
+NAME_MAX_LENGTH = 15
 
 
 class PublishedModel(models.Model):

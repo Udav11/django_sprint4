@@ -20,6 +20,7 @@ def get_objects():
 def index(request):
     post_list = get_objects()[:MAX_POSTS]
     return render(request, 'blog/index.html', {'post_list': post_list})
+    
 
 
 def post_detail(request, post_id):
