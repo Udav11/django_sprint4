@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 
 from pathlib import Path
 
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -27,6 +28,12 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
+LOGIN_REDIRECT_URL = 'blog:index'
+LOGIN_URL = 'login'
+MEDIA_ROOT = BASE_DIR / 'media'
+ 
+EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
+EMAIL_FILE_PATH = BASE_DIR / 'sent_emails' 
 
 # Application definition
 

@@ -1,5 +1,8 @@
+from django.contrib.auth.mixins import UserPassesTestMixin, LoginRequiredMixin
 from django.shortcuts import render, get_object_or_404
+from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 from django.utils import timezone
+from django.urls import reverse_lazy
 from blog.models import Post, Category
 
 Now = timezone.now()
