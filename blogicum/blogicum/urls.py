@@ -3,6 +3,8 @@ from django.contrib.auth.forms import UserCreationForm
 from django.views.generic.edit import CreateView
 from django.urls import include, path, reverse_lazy
 
+handler404 = 'core.views.page_not_found'
+handler500 = 'core.views.server_error'
 
 urlpatterns = [
     path('', include('blog.urls', namespace='blog')),
