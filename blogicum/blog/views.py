@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.core.paginator import Paginator
 from django.contrib.auth.mixins import UserPassesTestMixin, LoginRequiredMixin
 from blog.forms import PostForm, UserProfileForm
 from django.shortcuts import render, get_object_or_404
@@ -9,7 +10,7 @@ from blog.models import Post, Category
 
 User = get_user_model()
 Now = timezone.now()
-MAX_POSTS = 5
+MAX_POSTS = 10
 
 
 def get_objects():
@@ -22,7 +23,7 @@ def get_objects():
 
 def index(request):
     post_list = get_objects()[:MAX_POSTS]
-    return render(request, 'blog/index.html', {'post_list': post_list})
+    return render(request, 'blog/index.html', {'page_obj': post_list})
 
 
 def post_detail(request, post_id):
@@ -31,21 +32,28 @@ def post_detail(request, post_id):
     )
     return render(request, 'blog/detail.html', {'post': post_list})
 
+class CategoryPostView(ListView):
+    template_name = 'blog/category.html'
+    context_object_name = 'post_list'
+    paginate_by = 10
 
-def category_posts(request, category_slug):
-    category = get_object_or_404(
-        Category.objects.values(),
-        slug=category_slug,
-        is_published=True
-    )
-    post_list = get_objects().filter(
-        category__slug=category_slug,
-    )
-    context = {
-        'category': category,
-        'post_list': post_list
-    }
-    return render(request, 'blog/category.html', context)
+    def get_queryset(self):
+        category_slug = self.kwargs['category_slug']
+
+        return Post.objects.filter(
+            category__slug=category_slug,
+            is_published=True
+        )
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        category_slug = self.kwargs['category_slug']
+        context['category'] = get_object_or_404(
+            Category,
+            slug=category_slug,
+            is_published=True
+        )
+        return context
 
 
 class PostCreateView(LoginRequiredMixin, CreateView):
@@ -65,8 +73,8 @@ class PostCreateView(LoginRequiredMixin, CreateView):
 class Profile(ListView):
     template_name = 'blog/profile.html'
     model = User
-    context_object_name = 'page_obj'
-    paginate_by = 10
+    context_object_name = 'post_list'
+    paginate_by = MAX_POSTS
 
     def get_queryset(self):
         username = self.kwargs.get('username')
