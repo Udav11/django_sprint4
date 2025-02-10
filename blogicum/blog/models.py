@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.utils import timezone
+
 
 User = get_user_model()
 MAX_LENGTH = 256
@@ -56,7 +58,9 @@ class Post(PublishedModel):
     pub_date = models.DateTimeField(
         verbose_name='Дата и время публикации',
         help_text=('Если установить дату и время в будущем —'
-                   ' можно делать отложенные публикации.'))
+                   ' можно делать отложенные публикации.')
+    )
+    image = models.ImageField('Фото', upload_to='post_images', blank=True)
     author = models.ForeignKey(
         User, on_delete=models.CASCADE, verbose_name='Автор публикации')
     location = models.ForeignKey(
@@ -76,5 +80,30 @@ class Post(PublishedModel):
         verbose_name_plural = 'Публикации'
         ordering = ('-pub_date', )
 
+    def is_visible_to_user(self, user):
+        if self.author == user:
+            return True
+        if not self.is_published:
+            return False
+        if self.pub_date > timezone.now():
+            return False
+        return True
+
     def __str__(self):
         return self.title[:NAME_MAX_LENGTH]
+
+
+class Comment(models.Model):
+    post = models.ForeignKey(
+        Post, on_delete=models.CASCADE, related_name='comments')
+    author = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='comments')
+    text = models.TextField('Текст комментария')
+    created_at = models.DateTimeField('Дата создания', default=timezone.now)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f'Комментарий от {self.author.username} к посту {self.post.title}'
