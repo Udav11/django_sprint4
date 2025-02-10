@@ -62,7 +62,8 @@ class Post(PublishedModel):
     )
     image = models.ImageField('Фото', upload_to='post_images', blank=True)
     author = models.ForeignKey(
-        User, on_delete=models.CASCADE, verbose_name='Автор публикации')
+        User, on_delete=models.CASCADE, verbose_name='Автор публикации',
+        related_name='posts')
     location = models.ForeignKey(
         Location,
         on_delete=models.SET_NULL,

@@ -25,6 +25,17 @@ class IndexView(ListView):
             category__is_published=True,
             pub_date__lt=Now
         )
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Добавляем комментарии для каждого поста
+        context['post_list'] = [
+            {
+                'post': post,
+                'comment_count': post.comments.count()  # Количество комментариев
+            }
+            for post in context['post_list']
+        ]
+        return context
 
 
 class PostDetailView(DetailView):
@@ -106,38 +117,16 @@ def post_delete(request, post_id):
 
     # Проверяем, что пользователь является автором поста
     if request.user != post.author:
-        return redirect('blog:post_detail', post_id=post.id)
+        return redirect('blog:post_detail', post_id)
+    form = PostForm(instance=post)
 
     if request.method == 'POST':
         post.delete()
-        return redirect('blog:post_detail', post_id=post_id)
+        return redirect('blog:profile', request.user.username)
 
-    return render(request, 'blog/detail.html', {
-        'post': post,
-        'comment': post,
-        'form': PostForm(),  # Добавляем форму для комментариев в контекст
-    })
+    return render(request, 'blog/create.html', context={'form': form})
 
 
-"""class PostDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
-    model = Post
-    template_name = 'blog/detail.html'
-    pk_url_kwarg = 'post_id'
-    success_url = reverse_lazy('blog:index')
-
-    def test_func(self):
-        post = self.get_object()
-        return self.request.user == post.author
-    
-    def handle_no_permission(self):
-        post = self.get_object()
-        return reverse_lazy('blog:post_detail', kwargs={'post_id': post.id})
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        # Добавляем форму для комментариев в контекст
-        context['form'] = CommentForm()
-        return context"""
 
 
 class ProfileView(ListView):
@@ -228,20 +217,4 @@ def comment_delete(request, post_id, comment_id):
     )
 
 
-"""class CommentDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
-    model = Comment
-    template_name = 'blog/detail.html'
-    context_object_name = 'comment'
-    pk_url_kwarg = 'comment_id'
 
-    def test_func(self):
-        comment = self.get_object()
-        return self.request.user == comment.author
-    
-    def handle_no_permission(self):
-        comment = self.get_object()
-        return reverse_lazy('blog:post_detail', kwargs={'post_id': comment.post.id})
-    
-    def get_success_url(self):
-        comment = self.get_object()
-        return reverse_lazy('blog:post_detail', kwargs={'post_id': comment.post.id})"""
