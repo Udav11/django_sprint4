@@ -32,7 +32,7 @@ class LocationAdmin(admin.ModelAdmin):
         'name',
     )
 
-
+@admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
     list_display = (
         'title',
@@ -40,7 +40,7 @@ class PostAdmin(admin.ModelAdmin):
         'pub_date',
         'author',
         'category',
-        'location'
+        'location',
     )
     list_filter = (
         'author',

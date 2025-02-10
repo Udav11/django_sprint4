@@ -1,11 +1,12 @@
 from django.db.models import Count
 from django.contrib.auth import get_user_model
-from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import UserPassesTestMixin, LoginRequiredMixin
 from blog.forms import PostForm, UserProfileForm, CommentForm
 from django.shortcuts import render, get_object_or_404, redirect
-from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
+from django.views.generic import (
+    CreateView, DetailView, ListView, UpdateView
+)
 from django.utils import timezone
 from django.urls import reverse_lazy
 from blog.models import Post, Category, Comment
@@ -98,7 +99,9 @@ class PostUpdateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse_lazy('blog:post_detail', kwargs={'post_id': self.object.id})
+        return reverse_lazy(
+            'blog:post_detail', kwargs={'post_id': self.object.id}
+        )
 
 
 @login_required
@@ -126,7 +129,10 @@ class ProfileView(ListView):
         username = self.kwargs.get('username')
         user = get_object_or_404(User, username=username)
         if self.request.user == user:
-            return Post.objects.filter(author=user).annotate(comment_count=Count('comments')).order_by('-pub_date')
+            return Post.objects.filter(
+                author=user
+            ).annotate(
+                comment_count=Count('comments')).order_by('-pub_date')
         return Post.objects.filter(
             author=user,
             is_published=True,
@@ -164,7 +170,9 @@ class CommentCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse_lazy('blog:post_detail', kwargs={'post_id': self.kwargs['post_id']})
+        return reverse_lazy(
+            'blog:post_detail', kwargs={'post_id': self.kwargs['post_id']}
+        )
 
 
 class CommentUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
@@ -183,7 +191,8 @@ class CommentUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
 
     def get_success_url(self):
         comment = self.get_object()
-        return reverse_lazy('blog:post_detail', kwargs={'post_id': comment.post.id})
+        return reverse_lazy('blog:post_detail',
+                            kwargs={'post_id': comment.post.id})
 
 
 @login_required
