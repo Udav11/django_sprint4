@@ -1,8 +1,9 @@
 from django.contrib.auth import get_user_model
 from django.core.paginator import Paginator
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import UserPassesTestMixin, LoginRequiredMixin
 from blog.forms import PostForm, UserProfileForm, CommentForm
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 from django.utils import timezone
 from django.urls import reverse_lazy
@@ -34,8 +35,8 @@ class PostDetailView(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['form'] = CommentForm()  
-        context['comments'] = self.object.comments.all()  
+        context['form'] = CommentForm()
+        context['comments'] = self.object.comments.all()
         return context
 
 
@@ -98,7 +99,27 @@ class PostUpdateView(LoginRequiredMixin, CreateView):
     def get_success_url(self):
         return reverse_lazy('blog:post_detail', kwargs={'post_id': self.object.id})
 
-class PostDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
+
+@login_required
+def post_delete(request, post_id):
+    post = get_object_or_404(Post, id=post_id)
+
+    # Проверяем, что пользователь является автором поста
+    if request.user != post.author:
+        return redirect('blog:post_detail', post_id=post.id)
+
+    if request.method == 'POST':
+        post.delete()
+        return redirect('blog:post_detail', post_id=post_id)
+
+    return render(request, 'blog/detail.html', {
+        'post': post,
+        'comment': post,
+        'form': PostForm(),  # Добавляем форму для комментариев в контекст
+    })
+
+
+"""class PostDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     model = Post
     template_name = 'blog/detail.html'
     pk_url_kwarg = 'post_id'
@@ -116,7 +137,7 @@ class PostDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
         context = super().get_context_data(**kwargs)
         # Добавляем форму для комментариев в контекст
         context['form'] = CommentForm()
-        return context
+        return context"""
 
 
 class ProfileView(ListView):
@@ -186,8 +207,28 @@ class CommentUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     def get_success_url(self):
         comment = self.get_object()
         return reverse_lazy('blog:post_detail', kwargs={'post_id': comment.post.id})
-    
-class CommentDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
+
+
+@login_required
+def comment_delete(request, post_id, comment_id):
+    comment = get_object_or_404(Comment, id=comment_id)
+
+    # Проверяем, что пользователь является автором комментария
+    if request.user != comment.author:
+        return redirect('blog:post_detail', post_id=post_id)
+
+    if request.method == 'POST':
+        comment.delete()
+        return redirect('blog:post_detail', post_id=post_id)
+
+    return render(request, 'blog/comment.html', {
+        'post': comment.post,
+        'comment': comment,
+        'form': CommentForm(), }
+    )
+
+
+"""class CommentDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     model = Comment
     template_name = 'blog/detail.html'
     context_object_name = 'comment'
@@ -203,5 +244,4 @@ class CommentDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     
     def get_success_url(self):
         comment = self.get_object()
-        return reverse_lazy('blog:post_detail', kwargs={'post_id': comment.post.id})
-
+        return reverse_lazy('blog:post_detail', kwargs={'post_id': comment.post.id})"""
