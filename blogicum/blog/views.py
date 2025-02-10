@@ -13,29 +13,32 @@ Now = timezone.now()
 MAX_POSTS = 10
 
 
-def get_objects():
-    return Post.objects.select_related(
-        'author', 'category', 'location'
-    ).filter(
-        pub_date__lt=Now, is_published=True, category__is_published=True
-    )
+class IndexView(ListView):
+    template_name = 'blog/index.html'
+    context_object_name = 'post_list'
+    paginate_by = MAX_POSTS
+
+    def get_queryset(self):
+        return Post.objects.filter(
+            is_published=True, 
+            category__is_published=True, 
+            pub_date__lt=Now
+            )
 
 
-def index(request):
-    post_list = get_objects()[:MAX_POSTS]
-    return render(request, 'blog/index.html', {'page_obj': post_list})
+class PostDetailView(DetailView):
+    template_name = 'blog/detail.html'
+    context_object_name = 'post'
+    model = Post
 
-
-def post_detail(request, post_id):
-    post_list = get_object_or_404(
-        get_objects(), id=post_id
-    )
-    return render(request, 'blog/detail.html', {'post': post_list})
+    def get_object(self, queryset=None):
+        post_id = self.kwargs['post_id']
+        return get_object_or_404(Post, id=post_id)
 
 class CategoryPostView(ListView):
     template_name = 'blog/category.html'
     context_object_name = 'post_list'
-    paginate_by = 10
+    paginate_by = MAX_POSTS
 
     def get_queryset(self):
         category_slug = self.kwargs['category_slug']
@@ -98,3 +101,4 @@ class EditProfile(LoginRequiredMixin, UpdateView):
     def get_success_url(self):
         return reverse_lazy('blog:profile',
                             kwargs={'username': self.request.user.username})
+
