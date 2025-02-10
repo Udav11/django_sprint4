@@ -1,3 +1,4 @@
+from django.db.models import Count
 from django.contrib.auth import get_user_model
 from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
@@ -24,18 +25,7 @@ class IndexView(ListView):
             is_published=True,
             category__is_published=True,
             pub_date__lt=Now
-        )
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        # Добавляем комментарии для каждого поста
-        context['post_list'] = [
-            {
-                'post': post,
-                'comment_count': post.comments.count()  # Количество комментариев
-            }
-            for post in context['post_list']
-        ]
-        return context
+        ).order_by('-pub_date').annotate(comment_count=Count('comments'))
 
 
 class PostDetailView(DetailView):
@@ -62,7 +52,7 @@ class CategoryPostView(ListView):
         return Post.objects.filter(
             category__slug=category_slug,
             is_published=True
-        )
+        ).annotate(comment_count=Count('comments')).order_by('-pub_date')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -127,8 +117,6 @@ def post_delete(request, post_id):
     return render(request, 'blog/create.html', context={'form': form})
 
 
-
-
 class ProfileView(ListView):
     template_name = 'blog/profile.html'
     context_object_name = 'post_list'
@@ -138,12 +126,12 @@ class ProfileView(ListView):
         username = self.kwargs.get('username')
         user = get_object_or_404(User, username=username)
         if self.request.user == user:
-            return Post.objects.filter(author=user)
+            return Post.objects.filter(author=user).annotate(comment_count=Count('comments')).order_by('-pub_date')
         return Post.objects.filter(
             author=user,
             is_published=True,
             pub_date__lte=timezone.now()
-        )
+        ).annotate(comment_count=Count('comments')).order_by('-pub_date')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -215,6 +203,3 @@ def comment_delete(request, post_id, comment_id):
         'comment': comment,
         'form': CommentForm(), }
     )
-
-
-
