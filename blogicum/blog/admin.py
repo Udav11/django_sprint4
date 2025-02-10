@@ -2,6 +2,7 @@ from django.contrib import admin
 
 from .models import Category, Location, Post
 
+
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
     list_display = (
@@ -18,6 +19,7 @@ class CategoryAdmin(admin.ModelAdmin):
         'title',
     )
 
+
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
     list_display = (
@@ -31,6 +33,7 @@ class LocationAdmin(admin.ModelAdmin):
     search_fields = (
         'name',
     )
+
 
 @admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
@@ -50,6 +53,3 @@ class PostAdmin(admin.ModelAdmin):
     search_fields = (
         'title',
     )
-
-
-
