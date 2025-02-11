@@ -52,7 +52,8 @@ class CategoryPostView(ListView):
 
         return Post.objects.filter(
             category__slug=category_slug,
-            is_published=True
+            is_published=True,
+            pub_date__lte=timezone.now()
         ).annotate(comment_count=Count('comments')).order_by('-pub_date')
 
     def get_context_data(self, **kwargs):
