@@ -32,13 +32,25 @@ class IndexView(ListView):
 class PostDetailView(DetailView):
     model = Post
     template_name = 'blog/detail.html'
-    context_object_name = 'post'
     pk_url_kwarg = 'post_id'
+
+    def get_object(self, queryset=None):
+        post = get_object_or_404(self.model, id=self.kwargs['post_id'])
+        if post.author == self.request.user:
+            return post
+        return get_object_or_404(
+            Post.objects.filter(
+                is_published=True,
+                category__is_published=True,
+                pub_date__lt=Now
+            ),
+            id=self.kwargs['post_id'],
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['form'] = CommentForm()
-        context['comments'] = self.object.comments.all()
+        context['comments'] = self.get_object().comments.select_related('author').all()
         return context
 
 
@@ -81,7 +93,7 @@ class PostCreateView(LoginRequiredMixin, CreateView):
                             kwargs={'username': self.request.user.username})
 
 
-class PostUpdateView(LoginRequiredMixin, CreateView):
+class PostUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Post
     template_name = 'blog/create.html'
     form_class = PostForm
@@ -93,7 +105,7 @@ class PostUpdateView(LoginRequiredMixin, CreateView):
 
     def handle_no_permission(self):
         post = self.get_object()
-        return reverse_lazy('blog:post_detail', post_id=post.id)
+        return redirect('blog:post_detail', post_id=post.id)
 
     def form_valid(self, form):
         form.instance.author = self.request.user
@@ -188,7 +200,7 @@ class CommentUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
 
     def handle_no_permission(self):
         comment = self.get_object()
-        return reverse_lazy('blog:post_detail', post_id=comment.post.id)
+        return redirect('blog:post_detail', post_id=comment.post.id)
 
     def get_success_url(self):
         comment = self.get_object()

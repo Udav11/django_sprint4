@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-5-65e@qjsggb4#28jxdu)%5a)re*uyf@^n5-4+6w10(p%6xp0t
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
-CSRF_FAILURE_VIEW = 'core.views.csrf_failure'
+CSRF_FAILURE_VIEW = 'pages.views.csrf_failure'
 
 LOGIN_REDIRECT_URL = 'blog:index'
 LOGIN_URL = 'login'
