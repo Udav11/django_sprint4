@@ -96,17 +96,19 @@ class Post(PublishedModel):
 
 class Comment(models.Model):
     post = models.ForeignKey(
-        Post, on_delete=models.CASCADE, related_name='comments',
-        verbose_name='Пост')
-    author = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='comments',
-        verbose_name='Автор')
-    text = models.TextField('Комментарий')
-    created_at = models.DateTimeField(
-        default=timezone.now, verbose_name='Добавлено'
+        Post, verbose_name="Пост", 
+        on_delete=models.CASCADE,
+        related_name='comments'
     )
-    updated_at = models.DateTimeField(
-        auto_now=True, verbose_name='Обновлено')
+    author = models.ForeignKey(
+        User, verbose_name="Автор", 
+        on_delete=models.CASCADE,
+        related_name='comments'
+    )
+    text = models.TextField(
+        "Комментарий",
+    )
+    created_at = models.DateTimeField("Добавлено", auto_now_add=True)
 
     class Meta:
         ordering = ['created_at']
