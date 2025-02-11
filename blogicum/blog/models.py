@@ -103,9 +103,10 @@ class Comment(models.Model):
         verbose_name='Автор')
     text = models.TextField('Комментарий')
     created_at = models.DateTimeField(
-        'Дата создания', default=timezone.now, verbose_name='Добавлено')
+        default=timezone.now, verbose_name='Добавлено'
+    )
     updated_at = models.DateTimeField(
-        'Дата обновления', auto_now=True, verbose_name='Обновлено')
+        auto_now=True, verbose_name='Обновлено')
 
     class Meta:
         ordering = ['created_at']
