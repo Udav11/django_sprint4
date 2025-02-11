@@ -210,6 +210,5 @@ def comment_delete(request, post_id, comment_id):
 
     return render(request, 'blog/comment.html', {
         'post': comment.post,
-        'comment': comment,
-        'form': CommentForm(), }
+        'comment': comment, }
     )
