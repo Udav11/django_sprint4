@@ -19,13 +19,6 @@ class PostForm(forms.ModelForm):
         }
         fields = ['title', 'text', 'pub_date', 'category', 'image', 'location']
 
-    def clean_pub_date(self):
-        pub_date = self.cleaned_data['pub_date']
-        if pub_date < timezone.now():
-            raise forms.ValidationError(
-                'Дата публикации не может быть в прошлом.')
-        return pub_date
-
 
 class CommentForm(forms.ModelForm):
     class Meta:

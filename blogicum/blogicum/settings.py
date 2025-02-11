@@ -51,8 +51,6 @@ INSTALLED_APPS = [
     'django_bootstrap5'
 ]
 
-X_FRAME_OPTIONS = 'DENY'
-
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
