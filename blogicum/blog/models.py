@@ -96,12 +96,12 @@ class Post(PublishedModel):
 
 class Comment(models.Model):
     post = models.ForeignKey(
-        Post, verbose_name="Пост", 
+        Post, verbose_name="Пост",
         on_delete=models.CASCADE,
         related_name='comments'
     )
     author = models.ForeignKey(
-        User, verbose_name="Автор", 
+        User, verbose_name="Автор",
         on_delete=models.CASCADE,
         related_name='comments'
     )
