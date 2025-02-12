@@ -24,11 +24,19 @@ def get_optimized_post_queryset(manager=Post.objects,
     queryset = manager.select_related('author', 'category', 'location')
 
     if apply_filters:
-        queryset = queryset.filter(
-            Q(is_published=True) | Q(author=user),
-            category__is_published=True,
-            pub_date__lte=timezone.now()
-        )
+        if user is not None:
+            # Автор видит свои посты, даже если категория снята с публикации
+            queryset = queryset.filter(
+                (Q(is_published=True) | Q(author=user)) & Q(
+                    (Q(category__is_published=True) | Q(author=user)),
+                    pub_date__lte=timezone.now()
+                ))
+        else:
+            queryset = queryset.filter(
+                is_published=True,
+                category__is_published=True,
+                pub_date__lte=timezone.now()
+            )
 
     if apply_annotation:
         queryset = queryset.annotate(
