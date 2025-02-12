@@ -13,6 +13,7 @@ def csrf_failure(request, reason=''):
 def server_error(request):
     return render(request, 'pages/500.html', status=500)
 
+
 class AboutView(TemplateView):
     template_name = 'pages/about.html'
 
