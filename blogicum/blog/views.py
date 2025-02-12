@@ -17,17 +17,16 @@ User = get_user_model()
 MAX_POSTS = settings.MAX_POSTS
 
 
-def get_optimized_post_queryset(
-        manager=Post.objects,
-        apply_filters=True,
-        apply_annotation=True):
-
+def get_optimized_post_queryset(manager=Post.objects,
+                                apply_filters=True,
+                                apply_annotation=True):
     queryset = manager.select_related('author', 'category', 'location')
 
     if apply_filters:
         queryset = queryset.filter(
             is_published=True,
             category__is_published=True,
+            pub_date__lte=timezone.now()
         )
 
     if apply_annotation:
@@ -107,8 +106,7 @@ class PostCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse('blog:profile',
-                       kwargs={'username': self.request.user})
+        return reverse('blog:profile', kwargs={'username': self.request.user})
 
 
 class PostUpdateView(LoginRequiredMixin, OnlyAuthorMixin, UpdateView):
@@ -156,13 +154,17 @@ class ProfileView(ListView):
         username = self.kwargs.get('username')
         user = get_object_or_404(User, username=username)
         if self.request.user == user:
-            return get_optimized_post_queryset(apply_filters=True,
-                                               apply_annotation=True)
-        return Post.objects.filter(
-            author=user,
-            is_published=True,
-            pub_date__lte=timezone.now()
-        ).annotate(comment_count=Count('comments')).order_by('-pub_date')
+            # Автор видит все свои посты, включая снятые с публикации
+            return Post.objects.filter(author=user).annotate(
+                comment_count=Count('comments')
+            ).order_by('-pub_date')
+        else:
+            # Другие пользователи видят только опубликованные посты
+            return get_optimized_post_queryset(
+                manager=Post.objects.filter(author=user),
+                apply_filters=True,
+                apply_annotation=True
+            )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
