@@ -1,4 +1,4 @@
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
@@ -19,12 +19,13 @@ MAX_POSTS = settings.MAX_POSTS
 
 def get_optimized_post_queryset(manager=Post.objects,
                                 apply_filters=True,
-                                apply_annotation=True):
+                                apply_annotation=True,
+                                user=None):
     queryset = manager.select_related('author', 'category', 'location')
 
     if apply_filters:
         queryset = queryset.filter(
-            is_published=True,
+            Q(is_published=True) | Q(author=user),
             category__is_published=True,
             pub_date__lte=timezone.now()
         )
