@@ -17,8 +17,8 @@ User = get_user_model()
 MAX_POSTS = settings.MAX_POSTS
 
 
-def get_optimized_post_queryset(manager=Post.objects,
-                                apply_filters=True,
+def get_optimized_post_queryset(manager=Post.objects, 
+                                apply_filters=True, 
                                 apply_annotation=True):
     queryset = manager.select_related('author', 'category', 'location')
 
