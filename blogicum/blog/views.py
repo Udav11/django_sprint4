@@ -1,19 +1,46 @@
 from django.db.models import Count
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.conf import settings
 from django.contrib.auth.mixins import UserPassesTestMixin, LoginRequiredMixin
-from blog.forms import PostForm, UserProfileForm, CommentForm
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import (
     CreateView, DetailView, ListView, UpdateView
 )
 from django.utils import timezone
-from django.urls import reverse_lazy
-from blog.models import Post, Category, Comment
+from django.urls import reverse
+
+from .models import Post, Category, Comment
+from .forms import PostForm, UserProfileForm, CommentForm
 
 User = get_user_model()
-Now = timezone.now()
-MAX_POSTS = 10
+MAX_POSTS = settings.MAX_POSTS
+
+
+def get_optimized_post_queryset(
+        manager=Post.objects,
+        apply_filters=True,
+        apply_annotation=True):
+
+    queryset = manager.select_related('author', 'category', 'location')
+
+    if apply_filters:
+        queryset = queryset.filter(
+            is_published=True,
+            category__is_published=True,
+        )
+
+    if apply_annotation:
+        queryset = queryset.annotate(
+            comment_count=Count('comments')).order_by('-pub_date')
+
+    return queryset
+
+
+class OnlyAuthorMixin(UserPassesTestMixin):
+    def test_func(self):
+        post = self.get_object()
+        return self.request.user == post.author
 
 
 class IndexView(ListView):
@@ -22,11 +49,10 @@ class IndexView(ListView):
     paginate_by = MAX_POSTS
 
     def get_queryset(self):
-        return Post.objects.filter(
-            is_published=True,
-            category__is_published=True,
-            pub_date__lt=Now
-        ).order_by('-pub_date').annotate(comment_count=Count('comments'))
+        return get_optimized_post_queryset(
+            apply_filters=True,
+            apply_annotation=True
+        )
 
 
 class PostDetailView(DetailView):
@@ -34,24 +60,17 @@ class PostDetailView(DetailView):
     template_name = 'blog/detail.html'
     pk_url_kwarg = 'post_id'
 
-    def get_object(self, queryset=None):
-        post = get_object_or_404(self.model, id=self.kwargs['post_id'])
-        if post.author == self.request.user:
-            return post
-        return get_object_or_404(
-            Post.objects.filter(
-                is_published=True,
-                category__is_published=True,
-                pub_date__lt=Now
-            ),
-            id=self.kwargs['post_id'],
+    def get_queryset(self):
+        return get_optimized_post_queryset(
+            apply_filters=True,
+            apply_annotation=True
         )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['form'] = CommentForm()
-        context['comments'] = self.get_object(
-        ).comments.select_related('author').all()
+        context['comments'] = self.get_object().comments.select_related(
+            'author').all()
         return context
 
 
@@ -61,13 +80,11 @@ class CategoryPostView(ListView):
     paginate_by = MAX_POSTS
 
     def get_queryset(self):
-        category_slug = self.kwargs['category_slug']
-
-        return Post.objects.filter(
-            category__slug=category_slug,
-            is_published=True,
-            pub_date__lte=timezone.now()
-        ).annotate(comment_count=Count('comments')).order_by('-pub_date')
+        category = get_object_or_404(
+            Category, slug=self.kwargs['category_slug'])
+        return get_optimized_post_queryset(manager=category.posts,
+                                           apply_filters=True,
+                                           apply_annotation=True)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -90,30 +107,26 @@ class PostCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse_lazy('blog:profile',
-                            kwargs={'username': self.request.user.username})
+        return reverse('blog:profile',
+                       kwargs={'username': self.request.user})
 
 
-class PostUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+class PostUpdateView(LoginRequiredMixin, OnlyAuthorMixin, UpdateView):
     model = Post
     template_name = 'blog/create.html'
     form_class = PostForm
     pk_url_kwarg = 'post_id'
 
-    def test_func(self):
-        post = self.get_object()
-        return self.request.user == post.author
-
     def handle_no_permission(self):
-        post = self.get_object()
-        return redirect('blog:post_detail', post_id=post.id)
+        post_id = self.kwargs.get('post_id')
+        return redirect('blog:post_detail', post_id)
 
     def form_valid(self, form):
         form.instance.author = self.request.user
         return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse_lazy(
+        return reverse(
             'blog:post_detail', kwargs={'post_id': self.object.id}
         )
 
@@ -143,10 +156,8 @@ class ProfileView(ListView):
         username = self.kwargs.get('username')
         user = get_object_or_404(User, username=username)
         if self.request.user == user:
-            return Post.objects.filter(
-                author=user
-            ).annotate(
-                comment_count=Count('comments')).order_by('-pub_date')
+            return get_optimized_post_queryset(apply_filters=True,
+                                               apply_annotation=True)
         return Post.objects.filter(
             author=user,
             is_published=True,
@@ -168,8 +179,8 @@ class EditProfileView(LoginRequiredMixin, UpdateView):
         return self.request.user
 
     def get_success_url(self):
-        return reverse_lazy('blog:profile',
-                            kwargs={'username': self.request.user.username})
+        return reverse('blog:profile',
+                       kwargs={'username': self.request.user})
 
 
 class CommentCreateView(LoginRequiredMixin, CreateView):
@@ -184,36 +195,36 @@ class CommentCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse_lazy(
+        return reverse(
             'blog:post_detail', kwargs={'post_id': self.kwargs['post_id']}
         )
 
 
-class CommentUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+class CommentUpdateView(LoginRequiredMixin, OnlyAuthorMixin, UpdateView):
     model = Comment
     form_class = CommentForm
     template_name = 'blog/comment.html'
     pk_url_kwarg = 'comment_id'
 
-    def test_func(self):
-        comment = self.get_object()
-        return self.request.user == comment.author
+    def get_object(self, queryset=None):
 
-    def handle_no_permission(self):
-        comment = self.get_object()
-        return redirect('blog:post_detail', post_id=comment.post.id)
+        post_id = self.kwargs.get('post_id')
+        comment_id = self.kwargs.get('comment_id')
+
+        comment = get_object_or_404(Comment, id=comment_id, post_id=post_id)
+
+        return comment
 
     def get_success_url(self):
         comment = self.get_object()
-        return reverse_lazy('blog:post_detail',
-                            kwargs={'post_id': comment.post.id})
+        return reverse('blog:post_detail',
+                       kwargs={'post_id': comment.post.id})
 
 
 @login_required
 def comment_delete(request, post_id, comment_id):
-    comment = get_object_or_404(Comment, id=comment_id)
+    comment = get_object_or_404(Comment, id=comment_id, post_id=post_id)
 
-    # Проверяем, что пользователь является автором комментария
     if request.user != comment.author:
         return redirect('blog:post_detail', post_id=post_id)
 
@@ -223,5 +234,5 @@ def comment_delete(request, post_id, comment_id):
 
     return render(request, 'blog/comment.html', {
         'post': comment.post,
-        'comment': comment, }
-    )
+        'comment': comment,
+    })

@@ -98,12 +98,10 @@ class Comment(models.Model):
     post = models.ForeignKey(
         Post, verbose_name="Пост",
         on_delete=models.CASCADE,
-        related_name='comments'
     )
     author = models.ForeignKey(
         User, verbose_name="Автор",
         on_delete=models.CASCADE,
-        related_name='comments'
     )
     text = models.TextField(
         "Комментарий",
@@ -112,7 +110,14 @@ class Comment(models.Model):
 
     class Meta:
         ordering = ['created_at']
+        verbose_name = 'комментарий'
+        verbose_name_plural = 'Комментарии'
+        default_related_name = 'comments'
 
     def __str__(self):
-        return (f'Комментарий от '
-                f'{self.author.username} к посту {self.post.title}')
+        author = self.author.username
+        title = self.post.title
+        text = self.text[:NAME_MAX_LENGTH]
+        return ('Комментарий от '
+                f'{author} к посту {title}. '
+                f'Текст комментария: {text}')

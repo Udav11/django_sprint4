@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from django.views.generic import TemplateView
 
 
 def page_not_found(request, exception):
@@ -11,3 +12,10 @@ def csrf_failure(request, reason=''):
 
 def server_error(request):
     return render(request, 'pages/500.html', status=500)
+
+class AboutView(TemplateView):
+    template_name = 'pages/about.html'
+
+
+class RulesView(TemplateView):
+    template_name = 'pages/rules.html'

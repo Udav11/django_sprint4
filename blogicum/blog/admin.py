@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Category, Location, Post
+from .models import Category, Location, Post, Comment
 
 
 @admin.register(Category)
@@ -53,3 +53,8 @@ class PostAdmin(admin.ModelAdmin):
     search_fields = (
         'title',
     )
+
+
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+    pass

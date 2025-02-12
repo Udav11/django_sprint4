@@ -36,11 +36,12 @@ MEDIA_ROOT = BASE_DIR / 'media'
 EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
 EMAIL_FILE_PATH = BASE_DIR / 'sent_emails'
 
+MAX_POSTS = 10
+
 # Application definition
 
 INSTALLED_APPS = [
     'blog.apps.BlogConfig',
-    'core.apps.CoreConfig',
     'pages.apps.PagesConfig',
     'django.contrib.admin',
     'django.contrib.auth',
