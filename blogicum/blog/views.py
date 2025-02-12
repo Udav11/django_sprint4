@@ -61,10 +61,13 @@ class PostDetailView(DetailView):
     pk_url_kwarg = 'post_id'
 
     def get_queryset(self):
+        user = (
+            self.request.user if self.request.user.is_authenticated else None
+        )
         return get_optimized_post_queryset(
             apply_filters=True,
             apply_annotation=True,
-            user=self.request.user  # Передаем текущего пользователя
+            user=user  # Передаем пользователя только если он авторизован
         )
 
     def get_context_data(self, **kwargs):
