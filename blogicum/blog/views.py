@@ -63,7 +63,8 @@ class PostDetailView(DetailView):
     def get_queryset(self):
         return get_optimized_post_queryset(
             apply_filters=True,
-            apply_annotation=True
+            apply_annotation=True,
+            user=self.request.user  # Передаем текущего пользователя
         )
 
     def get_context_data(self, **kwargs):
