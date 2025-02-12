@@ -25,11 +25,10 @@ def get_optimized_post_queryset(manager=Post.objects,
 
     if apply_filters:
         if user is not None:
-            # Автор видит свои посты, даже если категория снята с публикации
+            # Автор видит свои посты, даже если они отложены или категория снята с публикации
             queryset = queryset.filter(
                 (Q(is_published=True) | Q(author=user)) & Q(
-                    (Q(category__is_published=True) | Q(author=user)),
-                    pub_date__lte=timezone.now()
+                    (Q(category__is_published=True) | Q(author=user))
                 ))
         else:
             queryset = queryset.filter(
