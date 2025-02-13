@@ -1,4 +1,3 @@
-from django.db.models import Count, Q
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
@@ -7,46 +6,24 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import (
     CreateView, DetailView, ListView, UpdateView
 )
-from django.utils import timezone
 from django.urls import reverse
 
 from .models import Post, Category, Comment
 from .forms import PostForm, UserProfileForm, CommentForm
+from .utils import get_optimized_post_queryset
 
 User = get_user_model()
 MAX_POSTS = settings.MAX_POSTS
-
-
-def get_optimized_post_queryset(manager=Post.objects,
-                                apply_filters=True,
-                                apply_annotation=True,
-                                user=None):
-    queryset = manager.select_related('author', 'category', 'location')
-
-    if apply_filters:
-        if user is not None:
-            queryset = queryset.filter(
-                (Q(is_published=True) | Q(author=user)) & Q(
-                    (Q(category__is_published=True) | Q(author=user))
-                ))
-        else:
-            queryset = queryset.filter(
-                is_published=True,
-                category__is_published=True,
-                pub_date__lte=timezone.now()
-            )
-
-    if apply_annotation:
-        queryset = queryset.annotate(
-            comment_count=Count('comments')).order_by('-pub_date')
-
-    return queryset
 
 
 class OnlyAuthorMixin(UserPassesTestMixin):
     def test_func(self):
         post = self.get_object()
         return self.request.user == post.author
+
+    def handle_no_permission(self):
+        post_id = self.kwargs.get('post_id')
+        return redirect('blog:post_detail', post_id)
 
 
 class IndexView(ListView):
@@ -89,21 +66,23 @@ class CategoryPostView(ListView):
     context_object_name = 'post_list'
     paginate_by = MAX_POSTS
 
+    def get_category(self):
+        return get_object_or_404(
+            Category,
+            slug=self.kwargs['category_slug'],
+            is_published=True
+        )
+
     def get_queryset(self):
-        category = get_object_or_404(
-            Category, slug=self.kwargs['category_slug'])
+        category = CategoryPostView.get_category(self)
         return get_optimized_post_queryset(manager=category.posts,
                                            apply_filters=True,
-                                           apply_annotation=True)
+                                           apply_annotation=True,
+                                           )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        category_slug = self.kwargs['category_slug']
-        context['category'] = get_object_or_404(
-            Category,
-            slug=category_slug,
-            is_published=True
-        )
+        context['category'] = CategoryPostView.get_category(self)
         return context
 
 
@@ -117,7 +96,8 @@ class PostCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse('blog:profile', kwargs={'username': self.request.user})
+        return reverse('blog:profile',
+                       kwargs={'username': self.request.user.username})
 
 
 class PostUpdateView(LoginRequiredMixin, OnlyAuthorMixin, UpdateView):
@@ -125,10 +105,6 @@ class PostUpdateView(LoginRequiredMixin, OnlyAuthorMixin, UpdateView):
     template_name = 'blog/create.html'
     form_class = PostForm
     pk_url_kwarg = 'post_id'
-
-    def handle_no_permission(self):
-        post_id = self.kwargs.get('post_id')
-        return redirect('blog:post_detail', post_id)
 
     def form_valid(self, form):
         form.instance.author = self.request.user
@@ -161,25 +137,28 @@ class ProfileView(ListView):
     context_object_name = 'post_list'
     paginate_by = MAX_POSTS
 
+    def get_username(self):
+        return self.kwargs.get('username')
+
     def get_queryset(self):
-        username = self.kwargs.get('username')
+        username = ProfileView.get_username(self)
         user = get_object_or_404(User, username=username)
         if self.request.user == user:
             # Автор видит все свои посты, включая снятые с публикации
-            return Post.objects.filter(author=user).annotate(
-                comment_count=Count('comments')
-            ).order_by('-pub_date')
+            return get_optimized_post_queryset(manager=user.posts,
+                                               apply_filters=True,
+                                               apply_annotation=True)
         else:
             # Другие пользователи видят только опубликованные посты
             return get_optimized_post_queryset(
-                manager=Post.objects.filter(author=user),
+                manager=user.posts,
                 apply_filters=True,
                 apply_annotation=True
             )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        username = self.kwargs.get('username')
+        username = ProfileView.get_username(self)
         context['profile'] = get_object_or_404(User, username=username)
         return context
 
@@ -224,9 +203,7 @@ class CommentUpdateView(LoginRequiredMixin, OnlyAuthorMixin, UpdateView):
         post_id = self.kwargs.get('post_id')
         comment_id = self.kwargs.get('comment_id')
 
-        comment = get_object_or_404(Comment, id=comment_id, post_id=post_id)
-
-        return comment
+        return get_object_or_404(Comment, id=comment_id, post_id=post_id)
 
     def get_success_url(self):
         comment = self.get_object()
