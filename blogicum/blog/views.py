@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
-from django.contrib.auth.mixins import UserPassesTestMixin, LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import (
     CreateView, DetailView, ListView, UpdateView
@@ -9,21 +9,12 @@ from django.views.generic import (
 from django.urls import reverse
 
 from .models import Post, Category, Comment
+from .mixins import OnlyAuthorMixin
 from .forms import PostForm, UserProfileForm, CommentForm
-from .utils import get_optimized_post_queryset
+from .query_utils import get_optimized_post_queryset
 
 User = get_user_model()
 MAX_POSTS = settings.MAX_POSTS
-
-
-class OnlyAuthorMixin(UserPassesTestMixin):
-    def test_func(self):
-        post = self.get_object()
-        return self.request.user == post.author
-
-    def handle_no_permission(self):
-        post_id = self.kwargs.get('post_id')
-        return redirect('blog:post_detail', post_id)
 
 
 class IndexView(ListView):
@@ -75,14 +66,15 @@ class CategoryPostView(ListView):
 
     def get_queryset(self):
         category = CategoryPostView.get_category(self)
-        return get_optimized_post_queryset(manager=category.posts,
-                                           apply_filters=True,
-                                           apply_annotation=True,
-                                           )
+        return get_optimized_post_queryset(
+            manager=category.posts,
+            apply_filters=True,
+            apply_annotation=True,
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['category'] = CategoryPostView.get_category(self)
+        context['category'] = self.get_category()
         return context
 
 
