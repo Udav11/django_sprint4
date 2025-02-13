@@ -146,7 +146,7 @@ class ProfileView(ListView):
         if self.request.user == user:
             # Автор видит все свои посты, включая снятые с публикации
             return get_optimized_post_queryset(manager=user.posts,
-                                               apply_filters=True,
+                                               apply_filters=False,
                                                apply_annotation=True)
         else:
             # Другие пользователи видят только опубликованные посты
